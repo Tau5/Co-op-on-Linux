@@ -36,6 +36,8 @@ fi
 
 sudo steamos-readonly disable
 
+sudo pacman-key --init
+sudo pacman-key --populate archlinux holo
 sudo pacman -S sway firejail
 
 sudo steamos-readonly enable
