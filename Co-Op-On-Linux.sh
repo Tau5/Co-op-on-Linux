@@ -1,12 +1,17 @@
 #!/bin/bash
 
 DIR_CO_OP=$PWD
-DIR_CO_OP_WEST=$DIR_CO_OP/weston_configs
 DIR_CO_OP_CONT=$DIR_CO_OP/controller_blacklists
 DIR_CO_OP_SWAY=$DIR_CO_OP/sway_configs
 
 
-### Currently only 2 players is supported 
+### Currently only 2 players is supported
+
+if [ -e steamos-check ]; then
+    if ! type "sway" > /dev/null; then
+        ./install-steamos.sh
+    fi
+fi
 
 if [ "$1" = --help ]; then
 echo "
@@ -39,29 +44,64 @@ else
 echo "Quickrun is not used, type --help for more information"
 fi
 
+DIALOG="zenity"
 
 ### Manage game controllers 
 if [ "$1" = --quickrun ] && [ -d $DIR_CO_OP_CONT ] ; then
 echo "Controllers already Configured."
 else
-rm -rf $DIR_CO_OP_CONT
-mkdir $DIR_CO_OP_CONT
-readarray -t CONTROLLERS < <( python get-devices.py )
+    if [ "$DIR_CO_OP_CONT" != "/*" ]; then
+    rm -rf $DIR_CO_OP_CONT
+    else
+        echo "There was a bug were accidentally your system could have been wiped. Please report it"
+    fi
 
-CONTROLLER_1=$(zenity --list --title="Choose controller for player 1" --text="" --column=Controllers --column=devices \ "${CONTROLLERS[@]}" --print-column 2 | uniq)
-CONTROLLER_2=$(zenity --list --title="Choose controller for player 2" --text="" --column=Controllers --column=devices \ "${CONTROLLERS[@]}" --print-column 2 | uniq)
+    mkdir $DIR_CO_OP_CONT
 
-# add each device to blacklist
-for dev in $CONTROLLER_1
-do
-    printf -- '--blacklist=/dev/input/%s ' $dev >> $DIR_CO_OP_CONT/Player1_Controller_Blacklist
-done
 
-# add each device to blacklist
-for dev in $CONTROLLER_2
-do
-    printf -- '--blacklist=/dev/input/%s ' $dev >> $DIR_CO_OP_CONT/Player2_Controller_Blacklist
-done
+    readarray -t CONTROLLERS < <( ./get-devices.py list-zenity )
+
+    zenity_out=$($DIALOG --list --title="Choose controller for player 1" --text="" --column=Controllers --column=devices \ "${CONTROLLERS[@]}" --print-column 2 )
+
+    if [ $? -eq 1 ]; then
+        echo "Canceled"
+        exit
+    fi
+
+    CONTROLLER_1=$(echo $zenity_out | uniq)
+
+    readarray -t CONTROLLERS < <( ./get-devices.py list-zenity-exclude $CONTROLLER_1 )
+
+    zenity_out=$($DIALOG --list --title="Choose controller for player 2" --text="" --column=Controllers --column=devices \ "${CONTROLLERS[@]}" --print-column 2 )
+
+    if [ $? -eq 1 ]; then
+        echo "Canceled"
+        exit
+    fi
+
+    CONTROLLER_2=$(echo $zenity_out | uniq)
+    #CONTROLLER_2=$($DIALOG --list --title="Choose controller for player 2" --text="" --column=Controllers --column=devices \ "${CONTROLLERS[@]}" --print-column 2 | uniq)
+
+    # add each device to blacklist
+    for dev in $CONTROLLER_1
+    do
+        printf -- '--blacklist=/dev/input/%s ' $dev >> $DIR_CO_OP_CONT/Player1_Controller_Blacklist
+    done
+
+    # add each device to blacklist
+    for dev in $CONTROLLER_2
+    do
+        printf -- '--blacklist=/dev/input/%s ' $dev >> $DIR_CO_OP_CONT/Player2_Controller_Blacklist
+    done
+
+    readarray -t CONTROLLERS_REST < <(./get-devices.py list-handlers-exclude $CONTROLLER_1 $CONTROLLER_2)
+    echo $CONTROLLERS_REST
+
+    touch $DIR_CO_OP_CONT/Global_Controller_Blacklist
+    for dev in $CONTROLLERS_REST
+    do
+        printf -- '--blacklist=/dev/input/%s ' $dev >> $DIR_CO_OP_CONT/Global_Controller_Blacklist
+    done
 
 fi
 
@@ -69,44 +109,26 @@ fi
 ### Getting game path/command
 
 if [ "$1" = --quickrun ]; then
-GAMERUN="${@:3}"
-else 
-GAMERUN=$(zenity --title="Select game executable/launch script" --file-selection)
-fi
-
-
-### Writing Config files for Weston
-
-if [ -d $DIR_CO_OP_WEST ]; then
-echo "Weston Configurations already exist."
+    GAMERUN="${@:3}"
 else
-mkdir $DIR_CO_OP_WEST
-printf "[core]
-xwayland=true
-idle-time=0
-shell=kiosk
-[shell]
-locking=false
-[keyboard]
-keymap_layout=gb
-" >> $DIR_CO_OP_WEST/weston0.ini
-cp $DIR_CO_OP_WEST/weston0.ini $DIR_CO_OP_WEST/weston1.ini
-cp $DIR_CO_OP_WEST/weston0.ini $DIR_CO_OP_WEST/weston2.ini
+    if type "kdialog" > /dev/null; then
+        GAMERUN=$(kdialog --title="Select game executable/launch script" --getopenfilename)
+    else
+        GAMERUN=$(zenity --title="Select game executable/launch script" --file-selection)
+    fi
 fi
-
-### Setup resolution for Weston sessions
 
 if [ "$1" = --quickrun ]; then
 RESOLUTION=($2)
 else
-RESOLUTION=$(zenity --title="Resolution" --entry --text="Enter Resolution for Weston sessions ( for example: 1280x720 ) " --entry-text="1280x720")
+RESOLUTION=$($DIALOG --title="Resolution" --entry --text="Enter Resolution for Weston sessions ( for example: 1280x720 ) " --entry-text="1280x720")
 fi
 
 WIDTH=$(printf $RESOLUTION | awk -F "x" '{print $1}')
 HEIGHT=$(printf $RESOLUTION | awk -F "x" '{print $2}')
 
-exec_command1="WAYLAND_DISPLAY=wayland-2 firejail --noprofile $(cat $DIR_CO_OP_CONT/Player2_Controller_Blacklist ) $GAMERUN"
-exec_command2="WAYLAND_DISPLAY=wayland-2 firejail --noprofile $(cat $DIR_CO_OP_CONT/Player1_Controller_Blacklist ) $GAMERUN"
+exec_command1="WAYLAND_DISPLAY=wayland-2 firejail --noprofile $(cat $DIR_CO_OP_CONT/Player2_Controller_Blacklist ) $(cat $DIR_CO_OP_CONT/Global_Controller_Blacklist) $GAMERUN"
+exec_command2="WAYLAND_DISPLAY=wayland-2 firejail --noprofile $(cat $DIR_CO_OP_CONT/Player1_Controller_Blacklist ) $(cat $DIR_CO_OP_CONT/Global_Controller_Blacklist) $GAMERUN"
 
 mkdir $DIR_CO_OP_SWAY
 rm $DIR_CO_OP_SWAY/*.conf
@@ -124,29 +146,9 @@ echo "default_border none 0" > $DIR_CO_OP_SWAY/sway2.conf
 echo "output WL-1 resolution $(($WIDTH))x$HEIGHT" >> $DIR_CO_OP_SWAY/sway2.conf
 echo "exec $exec_command2" >> $DIR_CO_OP_SWAY/sway2.conf
 
-### Launching Weston sessions
-#weston --xwayland -c "$DIR_CO_OP_WEST/weston1.ini" --width=$WIDTH --height=$HEIGHT 2> /dev/null &
-#weston --xwayland -c "$DIR_CO_OP_WEST/weston2.ini" --width=$WIDTH --height=$HEIGHT 2> /dev/null &
-
 ### Launching sway sessions
 
 sway -c $DIR_CO_OP_SWAY/sway0.conf &
-
-#WAYLAND_DISPLAY=wayland-1 sway -c $DIR_CO_OP_SWAY/sway1.conf &
-#WAYLAND_DISPLAY=wayland-1 sway -c $DIR_CO_OP_SWAY/sway2.conf &
-
-#notneeded=$(ps l | grep weston0.ini | awk 'length($0) > 120 {print $3}')
-#kill $notneeded
-sleep 3
-
-#---Player 1---#
-#sleep 5
-#DISPLAY=:3 WAYLAND_DISPLAY=wayland-2 firejail --noprofile $(cat $DIR_CO_OP_CONT/Player2_Controller_Blacklist ) "$GAMERUN" &
-#sleep 1
-#---Player 2---#
-#DISPLAY=:4 WAYLAND_DISPLAY=wayland-3 firejail --noprofile $(cat $DIR_CO_OP_CONT/Player1_Controller_Blacklist ) "$GAMERUN" &
-#sleep 1
-
 
 echo "Done~!"
 fi
