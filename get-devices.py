@@ -28,17 +28,17 @@ for i in range(0, len(lines)):
         devices.append(lines[i][9:-2])
         devhandlers = []
 
-        syspath = lines[i+2][9:]
+        syspath = "/sys" + lines[i+2][9:]
         p = Path(syspath)
         p = p.parent.parent / "hidraw"
         if (p.exists()):
-            for i in p.iterdir():
-                devhandlers.append("/dev/"+i.name)
+            for a in p.iterdir():
+                devhandlers.append("/dev/"+a.name)
 
-        for h in lines[i+4][12:-1].split(" "):
-            devhandlers.append("/dev/input"+h)
+        for h in lines[i+4][12:-2].split(" "):
+            devhandlers.append("/dev/input/"+h)
 
-        handlers.append(devhandlers.join(" "))
+        handlers.append(" ".join(devhandlers))
 
 if sys.argv[1] == "list-handlers-exclude":
     for a in range(2, len(sys.argv)):
@@ -49,7 +49,8 @@ if sys.argv[1] == "list-handlers-exclude":
 
 
     for i in range(0, len(handlers)):
-        print(handlers[i])
+        print(handlers[i], end=" ")
+    print("\n", end="")
 
 if sys.argv[1] == "list-handlers":
     for i in range(0, len(handlers)):
