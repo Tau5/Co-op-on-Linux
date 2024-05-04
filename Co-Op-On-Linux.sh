@@ -47,7 +47,7 @@ fi
 mkdir $DIR_CO_OP_CONT
 
 
-function select_controllers() {
+function legacy_select_controllers() {
     readarray -t CONTROLLERS < <( $DIR_CO_OP/get-devices.py list-zenity )
 
     zenity_out=$($DIALOG --list --title="Choose controller for player 1" --text="" --column=Controllers --column=devices \ "${CONTROLLERS[@]}" --print-column 2 )
@@ -93,6 +93,14 @@ function select_controllers() {
     done
 };
 
+function select_controllers() {
+    pushd $DIR_CO_OP/controller-selector
+    ./controller-selector -w $WIDTH -h $HEIGHT
+    popd
+    source $DIR_CO_OP/controllers.rc
+    load_controller_firejail_args_array
+}
+
 if [ -z $WIDTH ] || [ -z $HEIGHT ] || [ -z $GAMERUN ]; then
     zenity --error --text "Enviroment variables not set (Did you run this without a preset?)"
     exit
@@ -100,32 +108,76 @@ fi
 
 select_controllers
 
-
-exec_command1="WAYLAND_DISPLAY=wayland-2 firejail --noprofile $(cat $DIR_CO_OP_CONT/Player2_Controller_Blacklist ) $(cat $DIR_CO_OP_CONT/Global_Controller_Blacklist) $GAMERUN"
-exec_command2="WAYLAND_DISPLAY=wayland-2 firejail --noprofile $(cat $DIR_CO_OP_CONT/Player1_Controller_Blacklist ) $(cat $DIR_CO_OP_CONT/Global_Controller_Blacklist) $GAMERUN"
+echo "(I) controller_firejail_args:"
+echo ${controller_firejail_args[*]}
 
 mkdir $DIR_CO_OP_SWAY
 rm $DIR_CO_OP_SWAY/*.conf
 
-echo "default_border none 0" > $DIR_CO_OP_SWAY/sway0.conf
-echo "output WL-1 resolution $(($WIDTH))x$HEIGHT" >> $DIR_CO_OP_SWAY/sway0.conf
+# Set width and height for game instances
+child_width=0
+child_height=0
+if [ $CONTROLLERS_NUM -lt 3 ]; then
+    child_width=$(($WIDTH/2))
+    child_height=$HEIGHT
+else
+    child_width=$(($WIDTH/2))
+    child_height=$(($HEIGHT/2))
+fi
+
+# Initialize script that spawns the game instances
+mkdir -p /tmp/coop-linux
+SPAWN_SCRIPT=/tmp/coop-linux/spawn_instances.sh
+rm $SPAWN_SCRIPT; touch $SPAWN_SCRIPT
+echo "#!/usr/bin/env bash" >> $SPAWN_SCRIPT
+chmod u+x $SPAWN_SCRIPT
+
+# Create root sway config
+echo "default_border none 0" > $DIR_CO_OP_SWAY/sway_root.conf
+echo "output WL-1 resolution $(($WIDTH))x$HEIGHT" >> $DIR_CO_OP_SWAY/sway_root.conf
 # Set resolution for X11 and Xwayland compositors (eg. gamescope)
-echo "output X11-1 resolution $(($WIDTH))x$HEIGHT" >> $DIR_CO_OP_SWAY/sway0.conf
-echo "exec sway -c $DIR_CO_OP_SWAY/sway1.conf" >> $DIR_CO_OP_SWAY/sway0.conf
-echo "exec sway -c $DIR_CO_OP_SWAY/sway2.conf" >> $DIR_CO_OP_SWAY/sway0.conf
+echo "output X11-1 resolution $(($WIDTH))x$HEIGHT" >> $DIR_CO_OP_SWAY/sway_root.conf
+echo "exec $SPAWN_SCRIPT" >> $DIR_CO_OP_SWAY/sway_root.conf
 
-echo "default_border none 0" > $DIR_CO_OP_SWAY/sway1.conf
-echo "output WL-1 resolution $(($WIDTH/2))x$HEIGHT" >> $DIR_CO_OP_SWAY/sway1.conf
-echo "exec $exec_command1" >> $DIR_CO_OP_SWAY/sway1.conf
+# Create sway config for instance containers
+for i in $(seq 0 $CONTROLLERS_NUM); do
+    echo "default_border none 0" > $DIR_CO_OP_SWAY/sway$i.conf
+    echo "output WL-1 resolution ${child_width}x${child_height}" >> $DIR_CO_OP_SWAY/sway$i.conf
+    exec_command="WAYLAND_DISPLAY=wayland-$i firejail --noprofile ${controller_firejail_args[$i]} $GAMERUN"
+    echo "exec $exec_command" >> $DIR_CO_OP_SWAY/sway$i.conf
+done
 
-echo "default_border none 0" > $DIR_CO_OP_SWAY/sway2.conf
-echo "output WL-1 resolution $(($WIDTH/2))x$HEIGHT" >> $DIR_CO_OP_SWAY/sway2.conf
-echo "exec $exec_command2" >> $DIR_CO_OP_SWAY/sway2.conf
+if [ $CONTROLLERS_NUM -gt 2 ]; then
+    echo "swaymsg splith" >> $SPAWN_SCRIPT
+    echo "sleep 1" >> $SPAWN_SCRIPT
+    echo "swaymsg exec \"sway -c $DIR_CO_OP_SWAY/sway0.conf\"" >> $SPAWN_SCRIPT
+    echo "sleep 1" >> $SPAWN_SCRIPT
+    echo "swaymsg exec \"sway -c $DIR_CO_OP_SWAY/sway1.conf\"" >> $SPAWN_SCRIPT
+    echo "sleep 1" >> $SPAWN_SCRIPT
+    echo "swaymsg focus left" >> $SPAWN_SCRIPT
+    echo "sleep 1" >> $SPAWN_SCRIPT
+    echo "swaymsg splitv" >> $SPAWN_SCRIPT
+    echo "sleep 1" >> $SPAWN_SCRIPT
+    echo "swaymsg exec \"sway -c $DIR_CO_OP_SWAY/sway2.conf\"" >> $SPAWN_SCRIPT
+    echo "sleep 1" >> $SPAWN_SCRIPT
+    echo "swaymsg focus left" >> $SPAWN_SCRIPT
+    echo "sleep 1" >> $SPAWN_SCRIPT
+    echo "swaymsg splitv" >> $SPAWN_SCRIPT
+    echo "sleep 1" >> $SPAWN_SCRIPT
+    if [ $CONTROLLERS_NUM -eq 3 ]; then
+        echo "swaymsg exec glxgears" >> $SPAWN_SCRIPT
+    else
+        echo "swaymsg exec \"sway -c $DIR_CO_OP_SWAY/sway3.conf\"" >> $SPAWN_SCRIPT
+    fi
+else
+    for i in $(seq 0 $(($CONTROLLERS_NUM - 1))); do
+        echo "swaymsg exec \"sway -c $DIR_CO_OP_SWAY/sway$i.conf\"" >> $SPAWN_SCRIPT
+    done
+fi
 
 ### Launching sway sessions
-
 cd $(dirname $GAMERUN)
 echo $PWD
-sway -c $DIR_CO_OP_SWAY/sway0.conf &
+sway -c $DIR_CO_OP_SWAY/sway_root.conf &
 
 echo "Done~!"

@@ -2,3 +2,4 @@ controller_blacklists
 profiles
 sway_configs
 steamos-check
+controllers.rc
