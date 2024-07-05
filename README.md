@@ -65,3 +65,7 @@ Borderlands 1 (Wine/Proton)
 Stardew valley (Native)
 - Status: Already Have in-game Co-op ✳️
 - Additional Notes: Making sure you already know that if you don't 🙂️
+
+Celeste (Native)
+- Status: Works with Goldberg ✅️
+- Additional Notes: To remove drm using Goldberg (so multiple instances can be launched), replace /lib64-linux/libsteam_api.so with Goldberg version. Will need CelesteNet mod installed to play multiplayer, can run a local server if necessary: https://docs.google.com/document/d/1cUXv42l4TQJ2_gZRqvbwGDkacpix_pqorKxKL5boJBk/edit?usp=sharing.
