@@ -11,7 +11,6 @@ done
 DIR_CO_OP=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
 
 cd $DIR_CO_OP
-
 DIR_CO_OP_CONT=$DIR_CO_OP/controller_blacklists
 DIR_CO_OP_SWAY=$DIR_CO_OP/sway_configs
 
@@ -93,7 +92,9 @@ function legacy_select_controllers() {
 };
 
 function select_controllers() {
-    $DIR_CO_OP/controller-selector -w $WIDTH -h $HEIGHT
+    pushd $DIR_CO_OP/controller-selector
+      controller-selector -w $WIDTH -h $HEIGHT
+    popd
     source $DIR_CO_OP/controllers.rc
     load_controller_firejail_args_array
 }
