@@ -289,7 +289,19 @@ auto main(int argc, char *argv[]) -> int {
 
     SDL_SetRenderDrawColor(renderer, 70, 0, 210, 255);
 
+    SDL_Event ev;
     while(!selection_done) {
+
+        while (SDL_PollEvent(&ev)) {
+            if (ev.type = SDL_WINDOWEVENT) {
+                    if (ev.window.event == SDL_WINDOWEVENT_CLOSE) {
+                        SDL_DestroyRenderer(renderer);
+                        SDL_DestroyWindow(window);
+                        exit(1);
+                    }
+            }
+        }
+
         SDL_RenderClear(renderer);
         TTF_SetFontSize(font, 30);
         auto text_surface = TTF_RenderText_Solid(font, "Press A/X/B (South) on a gamepad (START to confirm)", {255, 255, 255, 255});
