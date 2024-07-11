@@ -8,16 +8,16 @@ that supports LAN play (For example: Terraria, Need for Speed, etc.)
 ## Standard linux
 
 1. Download the latest release
-2. Unzip the release file
+2. Extract the release file
 3. Install `sway`, `firejail` and `zenity`
 4. Read Usage section
 
 ## Steam Deck (SteamOS)
 
 1. Download the latest release
-2. Unzip the release file
+2. Extract the release file
 3. Run install-steamos.sh
-4. Read the Usage section
+4. Read Usage section
 
 # Usage
 
