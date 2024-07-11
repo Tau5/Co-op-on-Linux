@@ -1,67 +1,65 @@
-# Co-op-on-Linux
+# Co-op-on-Linux (CO-OL)
 
-Script that allows Co-op on any game on linux
-,Currently only supports 2 Players
+This program allows you to play on splitscreen with up to 4 players on any game
+that supports LAN play (For example: Terraria, Need for Speed, etc.)
 
-# How to use it
+# Installation
 
-install dependencies :
+## Standard linux
 
-[Debain]
-- $~ sudo apt install weston firejail zenity
+1. Download the latest release
+2. Unzip the release file
+3. Install `sway`, `firejail` and `zenity`
+4. Read Usage section
 
-[Fedora]
-- $~ sudo dnf install weston firejail zenity
+## Steam Deck (SteamOS)
 
-[Arch]
-- $~ sudo pacman -Sy weston firejail zenity
+1. Download the latest release
+2. Unzip the release file
+3. Run install-steamos.sh
+4. Read the Usage section
 
-make it executable :
+# Usage
 
-- $~ chmod +x Co-Op-On-Linux.sh 
+CO-OL uses a profile system, each profile describes the command to execute and the resolution of the screen.
 
-run it :
+A profile will be created as a script file, which you can then execute (or add to steam or your menu)
+and play the game configured on the profile
 
-- $~ ./Co-Op-On-Linux.sh 
+## Creating a profile
 
-After running the script for the first time, you can use --quickrun to skip the setup GUI for the resolution and controllers of each instance.
+To create a profile execute the `create-new-profile.sh` script and follow the instructions:
 
-However, You still need to run the script without --quickrun to reconfigure controllers.
+- Game executable
+:   Select the executable for the game, you can also just write a command to execute 
+   (This is useful for wine games)
+ 
+- Resolution
+:   Specify the total resolution of the screen, this will be then divided for the game instances
 
-Here's quick guide on how to use --quickrun :
+- Name
+:   The name of the profile
 
-- $~ ./Co-Op-On-linux.sh --quickrun resolution /path/to/the/game
+## Using a profile
 
-Example :
+> **Note**
+> If you have added a profile as a Non-Steam Game on Steam make sure to disable Steam Input or 
+> CO-OL won't detect the controllers!
 
-- $~ ./Co-Op-On-linux.sh --quickrun 1280x720 /home/user/game/thegame
+Your profiles are in the `profiles` directory, just execute the script for the profile you want,
+a window will appear to select the controllers you are going to use, just press X/A/B on each of the
+controllers you are going to use, and press START when you are finished selecting controllers
 
-It Works very well with native Linux games ,
-It Should work with some games running under Wine/Proton (I didn't test many games) ,
-
- you just need to make launch script for the game,
-if you are using Lutris you need to extract launch script for the game :
-
-- $ lutris -l (for listing games ids)
-- $ lutris -b "type any file name".sh lutris:"type gameid here"
-
-then run it
-
-- $~ ./Co-Op-On-linux.sh --quickrun 1280x720 /home/user/game/"file name".sh
+CO-OL will then take care of launching the game instances
 
 # Tested Games
 
 DRM-free games should work as long as the game doesn't prevent you form run it more than one time
-,for Steam games it depends on the DRM, Some games works Some don't.
+, for Steam games it depends on the DRM, Some games works Some don't 
+(Those could probably work using Goldberg emulator)
 
-Terraria (Native) 
-- Status: Works ✅️
-- Additional Notes: on Steam client, Terraria status stuck on 'running' after exiting the game from both instance.
+| Game     | Status  | Command                                                                |
+|----------|---------|------------------------------------------------------------------------|
+| Terraria | Works   | $HOME/.local/share/Steam/steamapps/common/Terraria/Terraria.bin.x86_64 |
+|          |         |                                                                        |
 
-Borderlands 1 (Wine/Proton)
-- Status: Works With minor issues ☑️
-- Additional Notes: if you choose resolution lower than 1080p you going to have issues with the UI scale.
-
-Stardew valley (Native)
-- Status: Already Have in-game Co-op ✳️
-- Additional Notes: Making sure you already know that if you don't 🙂️
