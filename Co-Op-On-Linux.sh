@@ -13,9 +13,6 @@ DIR_CO_OP=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
 DIR_CO_OP_CONT=$DIR_CO_OP/controller_blacklists
 DIR_CO_OP_SWAY=$DIR_CO_OP/sway_configs
 
-
-### Currently only 2 players is supported
-
 if [ -e steamos-check ]; then
     if ! type "sway" > /dev/null; then
         $DIR_CO_OP/install-steamos.sh
@@ -39,7 +36,7 @@ DIALOG="zenity"
 
 ### Manage game controllers
 if [ "$DIR_CO_OP_CONT" != "/*" ]; then
-rm -rf $DIR_CO_OP_CONT
+rm -rf "$DIR_CO_OP_CONT"
 else
     echo "There was a bug were accidentally your system could have been wiped. Please report it"
 fi
@@ -112,7 +109,7 @@ echo "(I) controller_firejail_args:"
 echo ${controller_firejail_args[*]}
 
 mkdir $DIR_CO_OP_SWAY
-rm $DIR_CO_OP_SWAY/*.conf
+rm "$DIR_CO_OP_SWAY"/*.conf
 
 # Set width and height for game instances
 child_width=0
