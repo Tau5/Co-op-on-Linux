@@ -3,3 +3,5 @@ profiles
 sway_configs
 steamos-check
 controllers.rc
+.idea
+release.tar.gz
