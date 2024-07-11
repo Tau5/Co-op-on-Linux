@@ -10,7 +10,7 @@ else
 fi
 
 DEFAULT_RES=$(xdpyinfo | awk '/dimensions/{print $2}')
-RESOLUTION=$($DIALOG --title="Resolution" --entry --text="Enter Resolution for Weston sessions ( for example: 1280x720 ) " --entry-text=$DEFAULT_RES)
+RESOLUTION=$($DIALOG --title="Resolution" --entry --text="Enter screen resolution ( for example: 1280x720 ) " --entry-text=$DEFAULT_RES)
 
 WIDTH=$(printf $RESOLUTION | awk -F "x" '{print $1}')
 HEIGHT=$(printf $RESOLUTION | awk -F "x" '{print $2}')
