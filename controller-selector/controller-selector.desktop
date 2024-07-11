@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Controller Selector (CO-OL)
+Exec=co-ol-controller-selector
+Icon=icon
+Type=Application
+Categories=Utility;

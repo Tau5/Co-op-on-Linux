@@ -128,7 +128,9 @@ auto main(int argc, char *argv[]) -> int {
         exit(1);
     }
 
-    font = TTF_OpenFont("assets/UbuntuMono-R.ttf", 30);
+    const char* env_p = std::getenv("APPDIR");
+    auto font_path = (env_p ? std::string(env_p) : "") + "/usr/share/co-op-on-linux/assets/UbuntuMono-R.ttf";
+    font = TTF_OpenFont(font_path.c_str(), 30);
     if (font == NULL) {
         std::cerr << "Error: Couldn't load font" << std::endl << "\tTTF_Error: " << TTF_GetError() << std::endl;
         exit(1);
