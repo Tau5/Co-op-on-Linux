@@ -93,7 +93,7 @@ function legacy_select_controllers() {
 
 function select_controllers() {
     pushd $DIR_CO_OP/controller-selector
-      controller-selector -w $WIDTH -h $HEIGHT
+      ./controller-selector -w $WIDTH -h $HEIGHT
     popd
     source $DIR_CO_OP/controllers.rc
     load_controller_firejail_args_array
