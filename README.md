@@ -42,7 +42,7 @@ To create a profile execute the `create-new-profile.sh` script and follow the in
 
 ## Using a profile
 
-> **Note**
+> [!NOTE]
 > If you have added a profile as a Non-Steam Game on Steam make sure to disable Steam Input or 
 > CO-OL won't detect the controllers!
 
