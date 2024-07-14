@@ -22,6 +22,6 @@ install: $(OBJ_NAME)
 
 appimage: DESTDIR=AppDir
 appimage: install
-	NO_STRIP=true linuxdeploy --appdir=AppDir --desktop-file=controller-selector.desktop --icon-file=icon.png
+	NO_STRIP=true linuxdeploy --appdir=AppDir --desktop-file=controller-selector.desktop --icon-file=icon.svg
 	appimagetool AppDir $(OBJ_NAME).AppImage
 
