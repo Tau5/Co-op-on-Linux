@@ -19,6 +19,10 @@
 #include <algorithm>
 #include <iostream>
 
+void log_func_evdev(const struct libevdev *dev, enum libevdev_log_priority priority, void *data, const char *file, int line, const char *func, const char *format, va_list args) {
+    std::cout << "FUNCIONAAA";
+    printf(format, args);
+}
 struct udev *udev = nullptr;
 
 struct sdevice {
@@ -252,13 +256,28 @@ auto main(int argc, char *argv[]) -> int {
     for (auto it = sdevices.begin(); it != sdevices.end(); it++) {
         auto events = sdevice_get_eventnodes(*it);
         for (auto eventnode : events) {
+            printf("[I]: Trying to open %s\n", eventnode.c_str());
             int fd;
+            if (fd < 0) {
+                printf("[W]: Couldn't open %s (%s)\n", eventnode.c_str(), strerror(-fd));
+                close(fd);
+                continue;
+            }
             int rc = 1;
             fd = open(eventnode.c_str(), O_RDONLY | O_NONBLOCK);
-            struct libevdev* dev;
-            rc = libevdev_new_from_fd(fd, &dev);
+
+            char buffer[1024];
+
+            // Reading until the end of the file using fread
+            while (read(fd, buffer, sizeof(buffer)) > 0) {
+
+            }
+
+            struct libevdev* dev = libevdev_new();
+            libevdev_set_device_log_function(dev, log_func_evdev, LIBEVDEV_LOG_ERROR, NULL);
+            rc = libevdev_set_fd(dev, fd);
             if (rc < 0) {
-                fprintf(stderr, "Failed to init libevdev (%s)\n", strerror(-rc));
+                printf("Failed to init libevdev (%s)\n", strerror(-rc));
                 if (eventnode == *events.end().base()) {
                     exit(1);
                 } else {
