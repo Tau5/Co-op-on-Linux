@@ -111,10 +111,14 @@ function select_controllers() {
         height=$HEIGHT
     fi
 
+    rm $DIR_CO_OP/controllers.rc
     pushd $DIR_CO_OP/controller-selector
-    ./controller-selector -w $width -h $height
+      ./controller-selector -w $width -h $height
     popd
-
+    if ! [ -f $DIR_CO_OP/controllers.rc ]; then
+      zenity --error --text "Controller selector failed to open or failed to generate controllers file"
+      exit
+    fi
     source $DIR_CO_OP/controllers.rc
     load_controller_firejail_args_array
 }
