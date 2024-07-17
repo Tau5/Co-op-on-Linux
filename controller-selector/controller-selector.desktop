@@ -4,3 +4,4 @@ Exec=co-ol-controller-selector
 Icon=icon
 Type=Application
 Categories=Utility;
+X-AppImage-Integrate=false
