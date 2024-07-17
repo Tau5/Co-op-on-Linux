@@ -33,9 +33,12 @@ To create a profile execute the `create-new-profile.sh` script and follow the in
 - Game executable
 :   Select the executable for the game, you can also just write a command to execute 
    (This is useful for wine games)
+
+- Splitscreen or Separate Windows
+: Choose whether you want 2-4 smaller screens inside one window, or each player to have their own window
  
 - Resolution
-:   Specify the total resolution of the screen, this will be then divided for the game instances
+: If you chose splitscreen window, specify the total resolution of the screen, this will be then divided for the game instances -- if you chose separate windows, specify the resolution for each separate window (number of windows used will be based on number of controllers)
 
 - Name
 :   The name of the profile
