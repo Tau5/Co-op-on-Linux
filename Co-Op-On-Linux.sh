@@ -119,10 +119,18 @@ function select_controllers() {
     load_controller_firejail_args_array
 }
 
-if ([ -z $WIDTH ] || [ -z $HEIGHT ] || [ -z $GAMERUN ]) &&
-   ([ -z $WIDTH1 ] || [ -z $HEIGHT1 ] || [ -z $WIDTH2 ] || [ -z $HEIGHT2 ] || [ -z $WIDTH3 ] || [ -z $HEIGHT3 ] || [ -z $WIDTH4 ] || [ -z $HEIGHT4 ] || [ -z $GAMERUN ]); then
+if ([ -z $WIDTH ] || [ -z $HEIGHT ] || [ -z $GAMERUN ]) && [ -z $MULTIWINDOW ]; then
     zenity --error --text "Environment variables not set (Did you run this without a preset?)"
     exit
+elif [ -n "$MULTWINDOW" ]; then
+    for i in $(seq 1 $((NUM_WINDOWS))); do
+      WIDTH=$(eval "printf \${WIDTH$i}")
+      HEIGHT=$(eval "printf \${WIDTH$i}")
+      if [ -z $WIDTH ] || [ -z $HEIGHT ]; then
+        zenity --error --text "Environment variables not set (Did you run this without a preset?)"
+        exit
+      fi
+    done
 fi
 
 select_controllers
@@ -130,11 +138,18 @@ select_controllers
 echo "(I) controller_firejail_args:"
 echo ${controller_firejail_args[*]}
 
+result=$(awk -vx=$CONTROLLERS_NUM -vy=$NUM_WINDOWS 'BEGIN{ print x>=y+1?1:0}')
+if ([ $result -eq 1 ] && [ -n "$MULTIWINDOW" ] || 1); then
+        zenity --error --text "There are more controllers connected than windows defined in profile.
+Create a profile with more windows or connect less controllers"
+        exit
+fi
+
 mkdir $DIR_CO_OP_SWAY
 rm "$DIR_CO_OP_SWAY"/*.conf
 
 # Separate windows
-if [ -n "$WIDTH1" ] || [ -n "$HEIGHT1" ] || [ -n "$WIDTH2" ] || [ -n "$HEIGHT2" ] || [ -n "$WIDTH3" ] || [ -n "$HEIGHT3" ] || [ -n "$WIDTH4" ] || [ -n "$HEIGHT4" ]; then
+if [ -n "$MULTIWINDOW" ]; then
     # Create sway config for each instance
     for i in $(seq 0 $((CONTROLLERS_NUM - 1))); do
         echo "default_border none 0" > "$DIR_CO_OP_SWAY/sway$i.conf"
