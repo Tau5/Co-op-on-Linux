@@ -86,6 +86,115 @@ void signal_handler(int signal) {
     exit(1);
 }
 
+void scan_usb(struct sdevice* sdevice, struct udev* udev, udev_device* usbdev) {
+    struct udev_enumerate* enumerate_usb = udev_enumerate_new(udev);
+    udev_enumerate_add_match_parent(enumerate_usb, usbdev);
+    udev_enumerate_scan_devices(enumerate_usb);
+
+    udev_list_entry* child_devices = udev_enumerate_get_list_entry(enumerate_usb);
+    udev_list_entry* curr_child;
+    udev_list_entry_foreach(curr_child, child_devices) {
+        struct udev_device* child_device;
+        child_device = udev_device_new_from_syspath(udev, udev_list_entry_get_name(curr_child));
+
+        std::cout << "\t\t\t" << udev_device_get_syspath(child_device) << std::endl;
+
+        const char* devnode = udev_device_get_devnode(child_device);
+        if (devnode) {
+            if (std::string(devnode).find("event") != std::string::npos) {
+                std::cout << "\t\t\t\tEVENT!" << std::endl;
+            }
+            sdevice->devnodes.push_back(devnode);
+            std::cout << "\t\t\t\t" << devnode << std::endl;
+        }
+        udev_device_unref(child_device);
+    }
+}
+
+void scan_devices_from_enumerate(udev_enumerate* udev_enumerate) {
+    udev_enumerate_scan_devices(udev_enumerate);
+    udev_list_entry* devices = udev_enumerate_get_list_entry(udev_enumerate);
+    udev_list_entry* curr_device;
+    udev_list_entry_foreach(curr_device, devices) {
+        struct sdevice sdevice {};
+
+        const char* sysfs_path;
+        const char* dev_path;
+        struct udev_device* raw_dev;
+        struct udev_device *hid_dev;
+
+        sysfs_path = udev_list_entry_get_name(curr_device);
+        std::cout << "[I] Starting scan for " << sysfs_path << std::endl;
+        sdevice.sysfs_path = sysfs_path;
+
+        raw_dev = udev_device_new_from_syspath(udev, sysfs_path);
+        sysfs_path = udev_device_get_syspath(raw_dev);
+        dev_path = udev_device_get_devpath(raw_dev);
+
+        hid_dev = udev_device_get_parent_with_subsystem_devtype(raw_dev, "hid", NULL);
+
+        struct udev_device* usbdev;
+        //usbdev = udev_device_get_parent_with_subsystem_devtype(
+        //       hid_dev,
+        //       "usb",
+        //       "usb_device");
+
+        if (hid_dev) {
+            usbdev = hid_dev;
+        } else {
+            usbdev = raw_dev;
+        }
+
+        std::cout << sysfs_path << std::endl;
+        if (dev_path) {
+            std::cout << "[I] Devpath: " << dev_path << std::endl;
+            //std::cout << "[I] Devpath devnode: " << udev_device_get_devnode(raw_dev) << std::endl;
+        }
+        if (hid_dev) {
+            std::cout << "[I] HID dev syspath: " << udev_device_get_syspath(hid_dev) << std::endl;
+        }
+
+        if (usbdev) {
+            std::cout << "[I] USB dev syspath: " << udev_device_get_syspath(usbdev) << std::endl;
+            const char* product = udev_device_get_sysattr_value(usbdev, "product");
+            if (product) {
+                std::cout << "[I] USB dev product: " << product << std::endl;
+            }
+
+            //scan_usb(&sdevice, udev, usbdev);
+            struct udev_enumerate* enumerate_usb = udev_enumerate_new(udev);
+            udev_enumerate_add_match_parent(enumerate_usb, usbdev);
+            udev_enumerate_scan_devices(enumerate_usb);
+
+            udev_list_entry* child_devices = udev_enumerate_get_list_entry(enumerate_usb);
+            udev_list_entry* curr_child;
+            udev_list_entry_foreach(curr_child, child_devices) {
+                struct udev_device* child_device;
+                child_device = udev_device_new_from_syspath(udev, udev_list_entry_get_name(curr_child));
+
+                std::cout << "\t\t\t" << udev_device_get_syspath(child_device) << std::endl;
+
+                const char* devnode = udev_device_get_devnode(child_device);
+                if (devnode) {
+                    if (std::string(devnode).find("event") != std::string::npos) {
+                        std::cout << "\t\t\t\tEVENT!" << std::endl;
+                    }
+                    sdevice.devnodes.push_back(devnode);
+                    std::cout << "\t\t\t\t" << devnode << std::endl;
+                }
+                udev_device_unref(child_device);
+            }
+
+            udev_enumerate_unref(enumerate_usb);
+        }
+
+        sdevices.push_back(sdevice);
+
+        udev_device_unref(raw_dev);
+
+    }
+}
+
 auto main(int argc, char *argv[]) -> int {
 
 
@@ -135,9 +244,13 @@ auto main(int argc, char *argv[]) -> int {
     const char* env_p = std::getenv("APPDIR");
     auto font_path = (env_p ? std::string(env_p) : "") + "/usr/share/co-op-on-linux/assets/UbuntuMono-R.ttf";
     font = TTF_OpenFont(font_path.c_str(), 30);
-    if (font == NULL) {
-        std::cerr << "Error: Couldn't load font" << std::endl << "\tTTF_Error: " << TTF_GetError() << std::endl;
-        exit(1);
+    if (font == nullptr) {
+        font_path = "./assets/UbuntuMono-R.ttf";
+        font = TTF_OpenFont(font_path.c_str(), 30);
+        if (font == nullptr) {
+            std::cerr << "Error: Couldn't load font" << std::endl << "\tTTF_Error: " << TTF_GetError() << std::endl;
+            exit(1);
+        }
     }
 
     SDL_SetRenderDrawColor(renderer, 0, 0, 100, 255);
@@ -146,97 +259,21 @@ auto main(int argc, char *argv[]) -> int {
     auto text_surface = TTF_RenderText_Solid(font, "Scanning devices...", {255, 255, 255, 255});
     auto text_texture = SDL_CreateTextureFromSurface(renderer, text_surface);
     auto rect = SDL_Rect {(WIDTH - text_surface->w)/2, (HEIGHT - text_surface->h)/2, text_surface->w, text_surface->h};
-    SDL_RenderCopy(renderer, text_texture, NULL, &rect);
+    SDL_RenderCopy(renderer, text_texture, nullptr, &rect);
 
     SDL_RenderPresent(renderer);
 
     udev = udev_new();
-    auto udev_enumerate = udev_enumerate_new(udev);
 
-    udev_enumerate_add_match_subsystem(udev_enumerate, "hidraw");
-    udev_enumerate_scan_devices(udev_enumerate);
+    auto udev_enumerate_xpad = udev_enumerate_new(udev);
+    udev_enumerate_add_match_property(udev_enumerate_xpad, "DRIVER", "xpad");
+    scan_devices_from_enumerate(udev_enumerate_xpad);
+    udev_enumerate_unref(udev_enumerate_xpad);
 
-    udev_list_entry* devices = udev_enumerate_get_list_entry(udev_enumerate);
-    udev_list_entry* curr_device;
-
-    udev_list_entry_foreach(curr_device, devices) {
-
-        struct sdevice sdevice {};
-
-        const char* sysfs_path;
-        const char* dev_path;
-        struct udev_device* raw_dev;
-        struct udev_device *hid_dev;
-
-        sysfs_path = udev_list_entry_get_name(curr_device);
-        sdevice.sysfs_path = sysfs_path;
-
-        raw_dev = udev_device_new_from_syspath(udev, sysfs_path);
-        sysfs_path = udev_device_get_syspath(raw_dev);
-        dev_path = udev_device_get_devpath(raw_dev);
-
-        hid_dev = udev_device_get_parent_with_subsystem_devtype(raw_dev, "hid", NULL);
-
-        struct udev_device* usbdev;
-        //usbdev = udev_device_get_parent_with_subsystem_devtype(
-        //       hid_dev,
-        //       "usb",
-        //       "usb_device");
-
-        usbdev = udev_device_get_parent(hid_dev);
-
-        std::cout << sysfs_path << std::endl;
-        if (dev_path) {
-            std::cout << "\t" << dev_path << std::endl;
-            std::cout << "\t\t" << udev_device_get_devnode(raw_dev) << std::endl;
-        }
-        if (hid_dev) {
-            std::cout << "\t" << udev_device_get_syspath(hid_dev) << std::endl;
-        }
-
-
-        if (usbdev) {
-            std::cout << "\t" << udev_device_get_syspath(usbdev) << std::endl;
-            const char* product = udev_device_get_sysattr_value(usbdev, "product");
-            if (product) {
-                std::cout << "\t\t" << product << std::endl;
-            }
-
-            struct udev_enumerate* enumerate_usb = udev_enumerate_new(udev);
-            udev_enumerate_add_match_parent(enumerate_usb, usbdev);
-            udev_enumerate_scan_devices(enumerate_usb);
-
-            udev_list_entry* child_devices = udev_enumerate_get_list_entry(enumerate_usb);
-            udev_list_entry* curr_child;
-            udev_list_entry_foreach(curr_child, child_devices) {
-                struct udev_device* child_device;
-                child_device = udev_device_new_from_syspath(udev, udev_list_entry_get_name(curr_child));
-
-                std::cout << "\t\t\t" << udev_device_get_syspath(child_device) << std::endl;
-
-                const char* devnode = udev_device_get_devnode(child_device);
-                if (devnode) {
-                    if (std::string(devnode).find("event") != std::string::npos) {
-                        std::cout << "\t\t\t\tEVENT!" << std::endl;
-                    }
-                    sdevice.devnodes.push_back(devnode);
-                    std::cout << "\t\t\t\t" << devnode << std::endl;
-                }
-                udev_device_unref(child_device);
-            }
-
-            udev_enumerate_unref(enumerate_usb);
-        }
-
-
-
-        sdevices.push_back(sdevice);
-
-        udev_device_unref(raw_dev);
-
-    }
-
-    udev_enumerate_unref(udev_enumerate);
+    auto udev_enumerate_hidraw = udev_enumerate_new(udev);
+    udev_enumerate_add_match_subsystem(udev_enumerate_hidraw, "hidraw");
+    scan_devices_from_enumerate(udev_enumerate_hidraw);
+    udev_enumerate_unref(udev_enumerate_hidraw);
 
     udev_unref(udev);
 
@@ -258,13 +295,13 @@ auto main(int argc, char *argv[]) -> int {
         for (auto eventnode : events) {
             printf("[I]: Trying to open %s\n", eventnode.c_str());
             int fd;
+            fd = open(eventnode.c_str(), O_RDONLY | O_NONBLOCK);
             if (fd < 0) {
                 printf("[W]: Couldn't open %s (%s)\n", eventnode.c_str(), strerror(-fd));
                 close(fd);
                 continue;
             }
             int rc = 1;
-            fd = open(eventnode.c_str(), O_RDONLY | O_NONBLOCK);
 
             char buffer[1024];
 
