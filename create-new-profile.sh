@@ -18,9 +18,9 @@ if [ "$MULTIWINDOW" = "Separate Windows" ]; then
     declare -a MW_WIDTHS
     declare -a MW_HEIGHTS
     for i in $(seq 0 $((NUM_WINDOWS - 1))); do
-      RESOLUTION=($($DIALOG --title="Resolution" --entry --text="Enter screen resolution for player 1 ( for example: 1280x720 ) " --entry-text=$DEFAULT_RES))
-      MW_WIDTHS+=($(printf $RESOLUTION | awk -F "x" '{print $1}'))
-      MW_HEIGHTS+=($(printf $RESOLUTION | awk -F "x" '{print $2}'))
+      RESOLUTION=$($DIALOG --title="Resolution" --entry --text="Enter screen resolution for player 1 ( for example: 1280x720 ) " --entry-text=$DEFAULT_RES)
+      MW_WIDTHS+=$(printf $RESOLUTION | awk -F "x" '{print $1}')
+      MW_HEIGHTS+=$(printf $RESOLUTION | awk -F "x" '{print $2}')
     done
 elif [ "$MULTIWINDOW" = "Splitscreen Window" ]; then
     RESOLUTION=$($DIALOG --title="Resolution" --entry --text="Enter screen resolution ( for example: 1280x720 ) " --entry-text=$DEFAULT_RES)
