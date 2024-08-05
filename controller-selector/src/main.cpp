@@ -127,7 +127,13 @@ std::vector<std::string> get_gamepad_devices_path() {
         std::cout << "[I] Name: " << libevdev_get_name(dev) << std::endl;
 
         libevdev_free(dev);
+        auto finalpath = std::string("/sys/class/input/event") + std::to_string(i);
         auto devicepath_sym = std::string("/sys/class/input/event") + std::to_string(i) + std::string("/device");
+        while (fs::exists(devicepath_sym)) {
+            finalpath = devicepath_sym;
+            devicepath_sym += std::string("/device");
+        }
+        devicepath_sym = finalpath;
         if (fs::exists(devicepath_sym) && fs::is_symlink(devicepath_sym)) {
             //auto devicepath = fs::read_symlink(devicepath_sym);
             std::cout << "[I] Found parent device: " << devicepath_sym << std::endl;
