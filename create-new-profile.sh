@@ -18,9 +18,9 @@ if [ "$MULTIWINDOW" = "Separate Windows" ]; then
     declare -a MW_WIDTHS
     declare -a MW_HEIGHTS
     for i in $(seq 0 $((NUM_WINDOWS - 1))); do
-      RESOLUTION=$($DIALOG --title="Resolution" --entry --text="Enter screen resolution for player 1 ( for example: 1280x720 ) " --entry-text=$DEFAULT_RES)
-      MW_WIDTHS+=$(printf $RESOLUTION | awk -F "x" '{print $1}')
-      MW_HEIGHTS+=$(printf $RESOLUTION | awk -F "x" '{print $2}')
+        RESOLUTION=$($DIALOG --title="Resolution" --entry --text="Enter screen resolution for player $(($i + 1)) ( for example: 1280x720 ) " --entry-text=$DEFAULT_RES)
+        MW_WIDTHS[$i]=$(printf $RESOLUTION | awk -F "x" '{print $1}')
+        MW_HEIGHTS[$i]=$(printf $RESOLUTION | awk -F "x" '{print $2}')
     done
 elif [ "$MULTIWINDOW" = "Splitscreen Window" ]; then
     RESOLUTION=$($DIALOG --title="Resolution" --entry --text="Enter screen resolution ( for example: 1280x720 ) " --entry-text=$DEFAULT_RES)
@@ -36,8 +36,8 @@ if [ "$MULTIWINDOW" = "Separate Windows" ]; then
     echo "export MULTIWINDOW=1" >> "$DIR_CO_OP/profiles/$name.sh"
     echo "export NUM_WINDOWS=$NUM_WINDOWS" >> "$DIR_CO_OP/profiles/$name.sh"
     for i in $(seq 0 $((NUM_WINDOWS - 1))); do
-      echo "export WIDTH$(($i + 1))=${MW_WIDTHS[$i]}" >> "$DIR_CO_OP/profiles/$name.sh"
-      echo "export HEIGHT$(($i + 1))=${MW_HEIGHTS[$i]}" >> "$DIR_CO_OP/profiles/$name.sh"
+        echo "export WIDTH$(($i + 1))=${MW_WIDTHS[$i]}" >> "$DIR_CO_OP/profiles/$name.sh"
+        echo "export HEIGHT$(($i + 1))=${MW_HEIGHTS[$i]}" >> "$DIR_CO_OP/profiles/$name.sh"
     done
 elif [ "$MULTIWINDOW" = "Splitscreen Window" ]; then
     echo "export WIDTH=$WIDTH" >> "$DIR_CO_OP/profiles/$name.sh"
