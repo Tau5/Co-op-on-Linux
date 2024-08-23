@@ -123,7 +123,7 @@ function select_controllers() {
     load_controller_firejail_args_array
 }
 
-if ([ -z $WIDTH ] || [ -z $HEIGHT ] || [ -z $GAMERUN ]) && [ -z $MULTIWINDOW ]; then
+if ([ -z $WIDTH ] || [ -z $HEIGHT ] || [ -z "${GAMERUN}" ]) && [ -z $MULTIWINDOW ]; then
     zenity --error --text "Environment variables not set (Did you run this without a preset?)"
     exit
 elif [ -n "$MULTWINDOW" ]; then
@@ -159,8 +159,9 @@ if [ -n "$MULTIWINDOW" ]; then
         echo "default_border none 0" > "$DIR_CO_OP_SWAY/sway$i.conf"
         echo "output WL-1 resolution $(($(eval echo \$WIDTH$((i+1)))))x$(eval echo \$HEIGHT$((i+1)))" >> "$DIR_CO_OP_SWAY/sway$i.conf"
         echo "output X11-1 resolution $(($(eval echo \$WIDTH$((i+1)))))x$(eval echo \$HEIGHT$((i+1)))" >> "$DIR_CO_OP_SWAY/sway$i.conf"
-        exec_command="WAYLAND_DISPLAY=wayland-$i firejail --noprofile ${controller_firejail_args[$i]} $GAMERUN"
-        echo "exec $exec_command" >> "$DIR_CO_OP_SWAY/sway$i.conf"
+        exec_command="WAYLAND_DISPLAY=wayland-$i firejail --noprofile ${controller_firejail_args[$i]} '${GAMERUN}'"
+
+        "exec $exec_command" >> "$DIR_CO_OP_SWAY/sway$i.conf"
     done
 
     ### Launching sway sessions
@@ -200,7 +201,7 @@ elif [ -n "$WIDTH" ] && [ -n "$HEIGHT" ]; then
     for i in $(seq 0 $CONTROLLERS_NUM); do
         echo "default_border none 0" > $DIR_CO_OP_SWAY/sway$i.conf
         echo "output WL-1 resolution ${child_width}x${child_height}" >> $DIR_CO_OP_SWAY/sway$i.conf
-        exec_command="WAYLAND_DISPLAY=wayland-$i firejail --noprofile ${controller_firejail_args[$i]} $GAMERUN"
+        exec_command="WAYLAND_DISPLAY=wayland-$i firejail --noprofile ${controller_firejail_args[$i]} '${GAMERUN}'"
         echo "exec $exec_command" >> $DIR_CO_OP_SWAY/sway$i.conf
     done
 
@@ -232,8 +233,11 @@ elif [ -n "$WIDTH" ] && [ -n "$HEIGHT" ]; then
         done
     fi
 
+    if file "${GAMERUN}"; then
+        cd $(dirname "${GAMERUN}")
+    fi
+
     ### Launching sway sessions
-    cd $(dirname $GAMERUN)
     echo $PWD
     sway -c $DIR_CO_OP_SWAY/sway_root.conf &
 fi
