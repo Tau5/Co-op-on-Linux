@@ -10,7 +10,12 @@ that supports LAN play (For example: Terraria, Need for Speed, etc.)
 1. Download the latest release
 2. Extract the release file
 3. Install `sway`, `firejail` and `zenity`
-4. Read Usage section
+4. Add yourself to the firejail group: `sudo gpasswd -a $USER firejail`
+
+> [!NOTE]
+> On OpenSUSE you might have to execute `sudo chmod o=rx /usr/bin/firejail` because permissions for firejail are misconfigured
+
+5. Read Usage section
 
 ## Steam Deck (SteamOS)
 
