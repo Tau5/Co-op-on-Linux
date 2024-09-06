@@ -28,6 +28,35 @@ elif [ "$MULTIWINDOW" = "Splitscreen Window" ]; then
     HEIGHT=$(printf $RESOLUTION | awk -F "x" '{print $2}')
 fi
 
+# Check if the selected file is an .exe
+if echo "$GAMERUN" | grep -iq "\.exe$"; then
+    # Automatically find Proton installations
+    PROTON_PATHS=$(find "$HOME/.steam/steam/steamapps/common" -name 'Proton*' -type d 2>/dev/null)
+    if [ -z "$PROTON_PATHS" ]; then
+        PROTON_PATHS=$(find "/usr/share/steam/steamapps/common" -name 'Proton*' -type d 2>/dev/null)
+    fi
+
+    # Generate a list of Proton versions with human-readable names
+    PROTON_LIST=""
+    for path in $PROTON_PATHS; do
+        version=$(basename "$path")
+        PROTON_LIST+="$version|$path "
+    done
+
+    # Present the list to the user
+    PROTON_VERSION=$($DIALOG --title="Select Proton Version" --list --radiolist --column "Pick" --column "Proton Version" $(echo "$PROTON_LIST" | awk -F'|' '{print "TRUE", $1}') --text="Select the Proton version")
+
+    if [ -z "$PROTON_VERSION" ]; then
+        PROTON_VERSION="None"
+        PROTON_PATH=""
+    else
+        PROTON_PATH=$(echo "$PROTON_LIST" | grep "$PROTON_VERSION" | awk -F'|' '{print $2}')
+    fi
+else
+    PROTON_VERSION="None"
+    PROTON_PATH=""
+fi
+
 name=$($DIALOG --title="Profile name" --entry --text="Enter a name for the profile" --entry-text="name")
 mkdir -p "$DIR_CO_OP"/profiles
 echo "#!/bin/bash" > "$DIR_CO_OP/profiles/$name.sh"
@@ -45,6 +74,8 @@ elif [ "$MULTIWINDOW" = "Splitscreen Window" ]; then
 fi
 
 echo "export GAMERUN='$GAMERUN'" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "export PROTON_VERSION='$PROTON_VERSION'" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "export PROTON_PATH='$PROTON_PATH'" >> "$DIR_CO_OP/profiles/$name.sh"
 echo "../Co-Op-On-Linux.sh" >> "$DIR_CO_OP/profiles/$name.sh"
 chmod +x "$DIR_CO_OP/profiles/$name.sh"
 
