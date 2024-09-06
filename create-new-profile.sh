@@ -28,6 +28,10 @@ elif [ "$MULTIWINDOW" = "Splitscreen Window" ]; then
     HEIGHT=$(printf $RESOLUTION | awk -F "x" '{print $2}')
 fi
 
+# Add Proton selection
+PROTON_VERSION=$($DIALOG --title="Proton Version" --entry --text="Enter the Proton version or location (e.g., Proton 7.0 or /path/to/proton)" --entry-text="Proton 7.0")
+PROTON_PATH=$($DIALOG --title="Proton Path" --entry --text="Enter the path to the Proton executable (e.g., /path/to/proton)" --entry-text="/path/to/proton")
+
 name=$($DIALOG --title="Profile name" --entry --text="Enter a name for the profile" --entry-text="name")
 mkdir -p "$DIR_CO_OP"/profiles
 echo "#!/bin/bash" > "$DIR_CO_OP/profiles/$name.sh"
@@ -45,6 +49,8 @@ elif [ "$MULTIWINDOW" = "Splitscreen Window" ]; then
 fi
 
 echo "export GAMERUN='$GAMERUN'" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "export PROTON_VERSION='$PROTON_VERSION'" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "export PROTON_PATH='$PROTON_PATH'" >> "$DIR_CO_OP/profiles/$name.sh"
 echo "../Co-Op-On-Linux.sh" >> "$DIR_CO_OP/profiles/$name.sh"
 chmod +x "$DIR_CO_OP/profiles/$name.sh"
 
