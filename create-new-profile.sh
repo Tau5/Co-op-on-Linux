@@ -28,9 +28,21 @@ elif [ "$MULTIWINDOW" = "Splitscreen Window" ]; then
     HEIGHT=$(printf $RESOLUTION | awk -F "x" '{print $2}')
 fi
 
-# Add Proton selection
-PROTON_VERSION=$($DIALOG --title="Proton Version" --entry --text="Enter the Proton version or location (e.g., Proton 7.0 or /path/to/proton)" --entry-text="Proton 7.0")
-PROTON_PATH=$($DIALOG --title="Proton Path" --entry --text="Enter the path to the Proton executable (e.g., /path/to/proton)" --entry-text="/path/to/proton")
+# Automatically find Proton installations
+PROTON_PATHS=$(find "$HOME/.steam/steam/steamapps/common" -name 'Proton*' -type d 2>/dev/null)
+if [ -z "$PROTON_PATHS" ]; then
+    PROTON_PATHS=$(find "/usr/share/steam/steamapps/common" -name 'Proton*' -type d 2>/dev/null)
+fi
+
+PROTON_LIST=$(echo "$PROTON_PATHS" | awk -F'/' '{print $NF}' | sort -u)
+PROTON_VERSION=$($DIALOG --title="Select Proton Version" --list --radiolist --column "Pick" --column "Proton Version" $(echo "$PROTON_LIST" | awk '{print "TRUE", $1}') --text="Select the Proton version")
+
+if [ -z "$PROTON_VERSION" ]; then
+    PROTON_VERSION="None"
+    PROTON_PATH=""
+else
+    PROTON_PATH=$(echo "$PROTON_PATHS" | grep "$PROTON_VERSION")
+fi
 
 name=$($DIALOG --title="Profile name" --entry --text="Enter a name for the profile" --entry-text="name")
 mkdir -p "$DIR_CO_OP"/profiles
