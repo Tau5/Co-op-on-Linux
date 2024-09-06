@@ -3,10 +3,10 @@
 SOURCE=${BASH_SOURCE[0]}
 
 # https://stackoverflow.com/a/246128
-while [ -L "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+while [ -L "$SOURCE" ]; do
   DIR_CO_OP=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
   SOURCE=$(readlink "$SOURCE")
-  [[ $SOURCE != /* ]] && SOURCE=$DIR/$SOURCE # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+  [[ $SOURCE != /* ]] && SOURCE=$DIR/$SOURCE
 done
 DIR_CO_OP=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
 
@@ -43,18 +43,79 @@ if [ "$1" = --help ]; then
     "
 fi
 
-
 DIALOG="zenity"
 
 ### Manage game controllers
 if [ "$DIR_CO_OP_CONT" != "/*" ]; then
 rm -rf "$DIR_CO_OP_CONT"
 else
-    echo "There was a bug were accidentally your system could have been wiped. Please report it"
+    echo "There was a bug where accidentally your system could have been wiped. Please report it"
 fi
 
 mkdir $DIR_CO_OP_CONT
 
+# Function to list Proton versions
+function list_proton_versions() {
+    local proton_dir="$HOME/.steam/steam/steamapps/common"
+    local versions=()
+    
+    for dir in "$proton_dir"/Proton*; do
+        if [ -d "$dir" ]; then
+            versions+=($(basename "$dir"))
+        fi
+    done
+    
+    echo "${versions[@]}"
+}
+
+# Function to select Proton version
+function select_proton_version() {
+    local versions
+    versions=$(list_proton_versions)
+    
+    if [ -z "$versions" ]; then
+        zenity --error --text "No Proton versions found."
+        exit 1
+    fi
+
+    local selected_version
+    selected_version=$(zenity --list --title="Select Proton Version" --text="Choose the Proton version to use" --column="Proton Versions" $versions)
+
+    if [ $? -ne 0 ]; then
+        echo "Selection cancelled."
+        exit 1
+    fi
+
+    echo "$selected_version"
+}
+
+# Function to run game with Proton
+function run_with_proton() {
+    local game_path="$1"
+    local proton_version="$2"
+    
+    if [ -f "$game_path" ] && [[ "$game_path" == *.exe ]]; then
+        local proton_dir="$HOME/.steam/steam/steamapps/common/$proton_version"
+        local proton_executable="$proton_dir/proton"
+
+        if [ ! -x "$proton_executable" ]; then
+            zenity --error --text "Selected Proton version executable not found."
+            exit 1
+        fi
+
+        echo "Running $game_path with Proton $proton_version..."
+        "$proton_executable" run "$game_path"
+    else
+        echo "Running $game_path..."
+        $GAMERUN
+    fi
+}
+
+# Call to select Proton version
+PROTON_VERSION=$(select_proton_version)
+
+# Check and run game
+run_with_proton "$GAMERUN" "$PROTON_VERSION"
 
 function legacy_select_controllers() {
     readarray -t CONTROLLERS < <( $DIR_CO_OP/get-devices.py list-zenity )
