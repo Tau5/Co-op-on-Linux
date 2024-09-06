@@ -34,14 +34,21 @@ if [ -z "$PROTON_PATHS" ]; then
     PROTON_PATHS=$(find "/usr/share/steam/steamapps/common" -name 'Proton*' -type d 2>/dev/null)
 fi
 
-PROTON_LIST=$(echo "$PROTON_PATHS" | awk -F'/' '{print $NF}' | sort -u)
-PROTON_VERSION=$($DIALOG --title="Select Proton Version" --list --radiolist --column "Pick" --column "Proton Version" $(echo "$PROTON_LIST" | awk '{print "TRUE", $1}') --text="Select the Proton version")
+# Generate a list of Proton versions with human-readable names
+PROTON_LIST=""
+for path in $PROTON_PATHS; do
+    version=$(basename "$path")
+    PROTON_LIST+="$version|$path "
+done
+
+# Present the list to the user
+PROTON_VERSION=$($DIALOG --title="Select Proton Version" --list --radiolist --column "Pick" --column "Proton Version" $(echo "$PROTON_LIST" | awk -F'|' '{print "TRUE", $1}') --text="Select the Proton version")
 
 if [ -z "$PROTON_VERSION" ]; then
     PROTON_VERSION="None"
     PROTON_PATH=""
 else
-    PROTON_PATH=$(echo "$PROTON_PATHS" | grep "$PROTON_VERSION")
+    PROTON_PATH=$(echo "$PROTON_LIST" | grep "$PROTON_VERSION" | awk -F'|' '{print $2}')
 fi
 
 name=$($DIALOG --title="Profile name" --entry --text="Enter a name for the profile" --entry-text="name")
