@@ -1,3 +1,7 @@
+# Notice
+
+This project is unmantained, I am trying to rewrite the app so it isn't a bunch of shell scripts but in the meantime I won't be reviewing PRs for this version
+
 # Co-op-on-Linux (CO-OL)
 
 This program allows you to play on splitscreen with up to 4 players on any game
