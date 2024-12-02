@@ -1,6 +1,75 @@
 #!/bin/bash
 
 SOURCE=${BASH_SOURCE[0]}
+CONFIG_APPROACH="${CONFIG_APPROACH:-}"  # Can be: copy, args, or home
+GAMERUN_BASE="${GAMERUN:-}"
+GAMERUN_EXTRA_ARGS="${GAMERUN_EXTRA_ARGS:-}" # Additional arguments for non-host/player 1 players
+export STEAM_CLOUD_SYNC=0
+
+create_player_config() {
+    local i=$1
+    local width=$2
+    local height=$3
+
+    echo "default_border none 0" > "$DIR_CO_OP_SWAY/sway$i.conf"
+    echo "output WL-1 resolution ${width}x${height}" >> "$DIR_CO_OP_SWAY/sway$i.conf"
+    echo "output X11-1 resolution ${width}x${height}" >> "$DIR_CO_OP_SWAY/sway$i.conf"
+
+    if [ "$i" -eq 0 ]; then
+        # First player (host) uses default config
+        exec_command="WAYLAND_DISPLAY=wayland-$i firejail --noprofile ${controller_firejail_args[$i]} ${GAMERUN_BASE}"
+    else
+        # Handle different configuration approaches for non-host players
+        case "$CONFIG_APPROACH" in
+            "copy")
+                if [ -n "$GAME_CONFIG_PARAM" ] && [ -n "$GAME_CONFIG_GUEST" ]; then
+                    exec_command="WAYLAND_DISPLAY=wayland-$i firejail --noprofile ${controller_firejail_args[$i]} ${GAMERUN_BASE} ${GAMERUN_EXTRA_ARGS} $GAME_CONFIG_PARAM $GAME_CONFIG_GUEST"
+                fi
+                ;;
+            "args")
+                exec_command="WAYLAND_DISPLAY=wayland-$i firejail --noprofile ${controller_firejail_args[$i]} ${GAMERUN_BASE} ${GAMERUN_EXTRA_ARGS}"
+                ;;
+            "home")
+                if [ -n "$GAME_HOME_DIR" ]; then
+                    exec_command="WAYLAND_DISPLAY=wayland-$i HOME=${GAME_HOME_DIR} firejail --noprofile ${controller_firejail_args[$i]} ${GAMERUN_BASE} ${GAMERUN_EXTRA_ARGS}"
+                fi
+                ;;
+            *)
+                echo "Error: Invalid or missing CONFIG_APPROACH, default to doing nothing"
+                ;;
+        esac
+    fi
+    echo "exec $exec_command" >> "$DIR_CO_OP_SWAY/sway$i.conf"
+}
+
+# Function to launch sway sessions
+launch_sway_sessions() {
+    local config_type=$1
+    cd $(dirname $GAMERUN_BASE)
+    echo $PWD
+
+    if [ "$config_type" = "root" ]; then
+        sway -c $DIR_CO_OP_SWAY/sway_root.conf &
+    else
+        for i in $(seq 0 $(($CONTROLLERS_NUM - 1))); do
+            sway -c $DIR_CO_OP_SWAY/sway$i.conf &
+        done
+    fi
+}
+
+create_guest_config() {
+    if [ -n "$GAME_CONFIG_SOURCE" ] && [ -n "$GAME_CONFIG_GUEST" ] && [ -n "$GAME_CONFIG_MODIFY_CMD" ]; then
+        if [ -f "$GAME_CONFIG_SOURCE" ]; then
+            echo "Creating guest config from $GAME_CONFIG_SOURCE"
+            cp "$GAME_CONFIG_SOURCE" "$GAME_CONFIG_GUEST"
+            echo "Modifying guest config"
+            eval "$GAME_CONFIG_MODIFY_CMD $GAME_CONFIG_GUEST"
+            echo "Successfully created guest config at $GAME_CONFIG_GUEST"
+        else
+            echo "Warning: Host config file not found at $GAME_CONFIG_SOURCE"
+        fi
+    fi
+}
 
 # https://stackoverflow.com/a/246128
 while [ -L "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
@@ -142,48 +211,38 @@ select_controllers
 echo "(I) controller_firejail_args:"
 echo ${controller_firejail_args[*]}
 
+if [ "$CONTROLLERS_NUM" -gt 1 ]; then
+    create_guest_config
+fi
+
 result=$(awk -vx=$CONTROLLERS_NUM -vy=$NUM_WINDOWS 'BEGIN{ print x>=y+1?1:0}')
-if ([ $result -eq 1 ] && [ -n "$MULTIWINDOW" ] || 1); then
+if [ $result -eq 1 ] && [ -n "$MULTIWINDOW" ]; then
         zenity --error --text "There are more controllers connected than windows defined in profile.
 Create a profile with more windows or connect less controllers"
         exit
 fi
 
-mkdir $DIR_CO_OP_SWAY
+mkdir -p $DIR_CO_OP_SWAY
 rm "$DIR_CO_OP_SWAY"/*.conf
 
 # Separate windows
 if [ -n "$MULTIWINDOW" ]; then
     # Create sway config for each instance
     for i in $(seq 0 $((CONTROLLERS_NUM - 1))); do
-        echo "default_border none 0" > "$DIR_CO_OP_SWAY/sway$i.conf"
-        echo "output WL-1 resolution $(($(eval echo \$WIDTH$((i+1)))))x$(eval echo \$HEIGHT$((i+1)))" >> "$DIR_CO_OP_SWAY/sway$i.conf"
-        echo "output X11-1 resolution $(($(eval echo \$WIDTH$((i+1)))))x$(eval echo \$HEIGHT$((i+1)))" >> "$DIR_CO_OP_SWAY/sway$i.conf"
-        exec_command="WAYLAND_DISPLAY=wayland-$i firejail --noprofile ${controller_firejail_args[$i]} '${GAMERUN}'"
-
-        "exec $exec_command" >> "$DIR_CO_OP_SWAY/sway$i.conf"
+        create_player_config $i $(eval echo \$WIDTH$((i+1))) $(eval echo \$HEIGHT$((i+1)))
     done
 
-    ### Launching sway sessions
-    cd $(dirname $GAMERUN)
-    echo $PWD
-    for i in $(seq 0 $(($CONTROLLERS_NUM - 1))); do
-        sway -c $DIR_CO_OP_SWAY/sway$i.conf &
-    done
-# Splitscreen window
+    launch_sway_sessions "individual"
+
 elif [ -n "$WIDTH" ] && [ -n "$HEIGHT" ]; then
-    # Set width and height for game instances
-    child_width=0
-    child_height=0
-    if [ $CONTROLLERS_NUM -lt 3 ]; then
-        child_width=$(($WIDTH/2))
-        child_height=$HEIGHT
-    else
-        child_width=$(($WIDTH/2))
+    # Calculate dimensions for splitscreen
+    child_width=$(($WIDTH/2))
+    child_height=$HEIGHT
+    if [ $CONTROLLERS_NUM -ge 3 ]; then
         child_height=$(($HEIGHT/2))
     fi
 
-    # Initialize script that spawns the game instances
+    # Initialize spawn script
     mkdir -p /tmp/coop-linux
     SPAWN_SCRIPT=/tmp/coop-linux/spawn_instances.sh
     rm $SPAWN_SCRIPT; touch $SPAWN_SCRIPT
@@ -193,18 +252,15 @@ elif [ -n "$WIDTH" ] && [ -n "$HEIGHT" ]; then
     # Create root sway config
     echo "default_border none 0" > $DIR_CO_OP_SWAY/sway_root.conf
     echo "output WL-1 resolution $(($WIDTH))x$HEIGHT" >> $DIR_CO_OP_SWAY/sway_root.conf
-    # Set resolution for X11 and Xwayland compositors (eg. gamescope)
     echo "output X11-1 resolution $(($WIDTH))x$HEIGHT" >> $DIR_CO_OP_SWAY/sway_root.conf
     echo "exec $SPAWN_SCRIPT" >> $DIR_CO_OP_SWAY/sway_root.conf
 
-    # Create sway config for instance containers
+    # Create configs for each player
     for i in $(seq 0 $CONTROLLERS_NUM); do
-        echo "default_border none 0" > $DIR_CO_OP_SWAY/sway$i.conf
-        echo "output WL-1 resolution ${child_width}x${child_height}" >> $DIR_CO_OP_SWAY/sway$i.conf
-        exec_command="WAYLAND_DISPLAY=wayland-$i firejail --noprofile ${controller_firejail_args[$i]} '${GAMERUN}'"
-        echo "exec $exec_command" >> $DIR_CO_OP_SWAY/sway$i.conf
+        create_player_config $i $child_width $child_height
     done
 
+    # Generate spawn script content
     if [ $CONTROLLERS_NUM -gt 2 ]; then
         echo "swaymsg splith" >> $SPAWN_SCRIPT
         echo "sleep 1" >> $SPAWN_SCRIPT
@@ -233,13 +289,7 @@ elif [ -n "$WIDTH" ] && [ -n "$HEIGHT" ]; then
         done
     fi
 
-    if file "${GAMERUN}"; then
-        cd $(dirname "${GAMERUN}")
-    fi
-
-    ### Launching sway sessions
-    echo $PWD
-    sway -c $DIR_CO_OP_SWAY/sway_root.conf &
+    launch_sway_sessions "root"
 fi
 
 echo "Done~!"

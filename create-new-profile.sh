@@ -45,6 +45,30 @@ elif [ "$MULTIWINDOW" = "Splitscreen Window" ]; then
 fi
 
 echo "export GAMERUN='$GAMERUN'" >> "$DIR_CO_OP/profiles/$name.sh"
+
+# Populate advanced configuration template
+echo "" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# Advanced Configuration - Choose ONE of these configuration approaches:" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# Approach 1: Config Copy" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# export CONFIG_APPROACH=\"copy\"" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# export GAME_CONFIG_SOURCE=\"\$HOME/.config/game/config.json\"" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# export GAME_CONFIG_GUEST=\"/tmp/game_p2_config.json\"" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# export GAME_CONFIG_MODIFY_CMD='sed -i \"s/volume=.*/volume=0/\"'" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# export GAME_CONFIG_PARAM=\"--config\"" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# Approach 2: Extra Arguments" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# export CONFIG_APPROACH=\"args\"" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# export GAMERUN_EXTRA_ARGS=\"--disable-music\"  # Example" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# Approach 3: Separate Home - Note that this likely only works with DRM free games (GoG)" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# export CONFIG_APPROACH=\"home\"" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# export GAME_HOME_DIR=\"/tmp/game_p2_home\"" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# mkdir -p \"\$GAME_HOME_DIR/.config/game\"" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# cp \"\$HOME/.config/game/config.json\" \"\$GAME_HOME_DIR/.config/game/\"" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "# sed -i 's/volume=.*/volume=0/' \"\$GAME_HOME_DIR/.config/game/config.json\"" >> "$DIR_CO_OP/profiles/$name.sh"
+echo "" >> "$DIR_CO_OP/profiles/$name.sh"
+
 echo "../Co-Op-On-Linux.sh" >> "$DIR_CO_OP/profiles/$name.sh"
 chmod +x "$DIR_CO_OP/profiles/$name.sh"
 
