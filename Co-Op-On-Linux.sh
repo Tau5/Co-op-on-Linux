@@ -3,10 +3,10 @@
 SOURCE=${BASH_SOURCE[0]}
 
 # https://stackoverflow.com/a/246128
-while [ -L "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
+while [ -L "$SOURCE" ]; do
   DIR_CO_OP=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
   SOURCE=$(readlink "$SOURCE")
-  [[ $SOURCE != /* ]] && SOURCE=$DIR/$SOURCE # if $SOURCE was a relative symlink, we need to resolve it relative to the path where the symlink file was located
+  [[ $SOURCE != /* ]] && SOURCE=$DIR/$SOURCE
 done
 DIR_CO_OP=$( cd -P "$( dirname "$SOURCE" )" >/dev/null 2>&1 && pwd )
 
@@ -43,18 +43,89 @@ if [ "$1" = --help ]; then
     "
 fi
 
-
 DIALOG="zenity"
 
 ### Manage game controllers
 if [ "$DIR_CO_OP_CONT" != "/*" ]; then
 rm -rf "$DIR_CO_OP_CONT"
 else
-    echo "There was a bug were accidentally your system could have been wiped. Please report it"
+    echo "There was a bug where accidentally your system could have been wiped. Please report it"
 fi
 
 mkdir $DIR_CO_OP_CONT
 
+# Function to list Proton versions
+function list_proton_versions() {
+    local proton_dir="$HOME/.steam/steam/steamapps/common"
+    local versions=()
+    
+    # Find all Proton directories and format them properly for zenity
+    for dir in "$proton_dir"/Proton*; do
+        if [ -d "$dir" ]; then
+            # Add each version as a single row
+            versions+=("$(basename "$dir")")
+        fi
+    done
+    
+    # Convert array to string with newlines
+    printf "%s\n" "${versions[@]}"
+}
+
+# Function to select Proton version
+function select_proton_version() {
+    local versions=$(list_proton_versions)
+    
+    if [ -z "$versions" ]; then
+        zenity --error --text "No Proton versions found in $HOME/.steam/steam/steamapps/common"
+        exit 1
+    fi
+
+    # Create a proper zenity list with single column
+    local selected_version=$(echo "$versions" | zenity --list \
+        --title="Select Proton Version" \
+        --text="Choose the Proton version to use:" \
+        --column="Proton Versions" \
+        --width=400 \
+        --height=300)
+
+    if [ $? -ne 0 ]; then
+        echo "Selection cancelled."
+        exit 1
+    fi
+
+    echo "$selected_version"
+}
+
+# Function to run game with Proton
+function run_with_proton() {
+    local game_path="$1"
+    local proton_version="$2"
+    
+    # Check if GAMERUN is an exe file or a command
+    if [[ "$game_path" == *.exe ]]; then
+        local proton_dir="$HOME/.steam/steam/steamapps/common/$proton_version"
+        local proton_executable="$proton_dir/proton"
+
+        if [ ! -x "$proton_executable" ]; then
+            zenity --error --text "Selected Proton version executable not found at: $proton_executable"
+            exit 1
+        fi
+
+        echo "Running $game_path with Proton $proton_version..."
+        STEAM_COMPAT_DATA_PATH="$HOME/.proton" "$proton_executable" run "$game_path"
+    else
+        # If not an .exe, run directly
+        echo "Running $game_path directly..."
+        eval "$GAMERUN"
+    fi
+}
+
+# Call to select Proton version and run game
+PROTON_VERSION=$(select_proton_version)
+
+if [ -n "$PROTON_VERSION" ]; then
+    run_with_proton "$GAMERUN" "$PROTON_VERSION"
+fi
 
 function legacy_select_controllers() {
     readarray -t CONTROLLERS < <( $DIR_CO_OP/get-devices.py list-zenity )
@@ -78,7 +149,6 @@ function legacy_select_controllers() {
     fi
 
     CONTROLLER_2=$(echo $zenity_out | uniq)
-    #CONTROLLER_2=$($DIALOG --list --title="Choose controller for player 2" --text="" --column=Controllers --column=devices \ "${CONTROLLERS[@]}" --print-column 2 | uniq)
 
     # add each device to blacklist
     for dev in $CONTROLLER_1
@@ -161,7 +231,7 @@ if [ -n "$MULTIWINDOW" ]; then
         echo "output X11-1 resolution $(($(eval echo \$WIDTH$((i+1)))))x$(eval echo \$HEIGHT$((i+1)))" >> "$DIR_CO_OP_SWAY/sway$i.conf"
         exec_command="WAYLAND_DISPLAY=wayland-$i firejail --noprofile ${controller_firejail_args[$i]} '${GAMERUN}'"
 
-        "exec $exec_command" >> "$DIR_CO_OP_SWAY/sway$i.conf"
+        echo "exec $exec_command" >> "$DIR_CO_OP_SWAY/sway$i.conf"
     done
 
     ### Launching sway sessions
