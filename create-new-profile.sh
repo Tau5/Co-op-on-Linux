@@ -56,7 +56,7 @@ if [ "$MULTIWINDOW" = "Separate Windows" ]; then
         # Validate resolution format
         if ! [[ "$RESOLUTION" =~ ^[0-9]+x[0-9]+$ ]]; then
             error_exit "Invalid resolution format for player $(($i + 1)). Use format: 1280x720"
-        }
+        fi
 
         MW_WIDTHS[$i]=$(echo "$RESOLUTION" | cut -dx -f1)
         MW_HEIGHTS[$i]=$(echo "$RESOLUTION" | cut -dx -f2)
@@ -70,7 +70,7 @@ else
     # Validate resolution format
     if ! [[ "$RESOLUTION" =~ ^[0-9]+x[0-9]+$ ]]; then
         error_exit "Invalid resolution format. Use format: 1280x720"
-    }
+    fi
 
     WIDTH=$(echo "$RESOLUTION" | cut -dx -f1)
     HEIGHT=$(echo "$RESOLUTION" | cut -dx -f2)
